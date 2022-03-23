@@ -1,0 +1,5 @@
+- Default argument
+- function that take any number of arguments
+- keyword-only arguments
+- Annotation
+- closure
