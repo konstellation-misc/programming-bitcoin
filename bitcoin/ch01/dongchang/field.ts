@@ -54,40 +54,95 @@ export class FieldElement {
     return this.num !== other.num || this.prime !== other.prime
   }
 
-  add = (other: FieldElement): FieldElement => {
-    if(this.prime != other.prime){
-      throw new Error('Cannot add two number in different Fields')
+  add = (other: FieldElement | number): FieldElement => {
+    let num: number
+
+    if(other instanceof FieldElement){
+      if(this.prime != other.prime){
+        throw new Error('Cannot add two number in different Fields')
+      }
+      num = other.num
+    } else {
+      num = other
     }
 
-    const number = (this.num + other.num) % this.prime
+    const number = (this.num + num) % this.prime
     
     return new FieldElement(number, this.prime)
   }
 
-  sub = (other: FieldElement): FieldElement => {
-    if(this.prime != other.prime){
-      throw new Error('Cannot add two number in different Fields')
+  sub = (other: number | FieldElement): FieldElement => {
+    let num: number
+
+    if(other instanceof FieldElement){
+      if(this.prime != other.prime){
+        throw new Error('Cannot add two number in different Fields')
+      }
+      num = other.num
+    } else {
+      num = other
     }
 
-    const beforeNegation = (this.num - other.num) % this.prime
-    const afterNegation = beforeNegation > 0 ? beforeNegation : beforeNegation + this.prime
+    const beforeNegation = (this.num - num) % this.prime
+    const  afterNegation = beforeNegation > 0 ? beforeNegation : beforeNegation + this.prime
 
     return new FieldElement(afterNegation, this.prime)
   }
 
-  mul = (multiplier: FieldElement): FieldElement => {
-    if(this.prime != multiplier.prime) {
-      throw new Error('Cannot add two number in different Fields')
+  mul = (multiplier: number | FieldElement): FieldElement => {
+    let num: number 
+
+    if(multiplier instanceof FieldElement){
+      if(this.prime != multiplier.prime){
+        throw new Error('Cannot add two number in different Fields')
+      }
+      num = multiplier.num
+    } else {
+      num = multiplier
     }
 
-    const number = this.num * multiplier.num % this.prime
+    const number = this.num * num % this.prime
 
     return new FieldElement(number, this.prime)
   }
 
-  exp = (exponent: number): FieldElement => {
-    const n = exponent % (this.prime - 1)
-    const number = powExp(this.num, n, this.prime)
+  exp = (exponent: number | FieldElement): FieldElement => {
+    let num: number 
+    let n: number
+
+    if(exponent instanceof FieldElement){
+      if(this.prime != exponent.prime){
+        throw new Error('Cannot add two number in different Fields')
+      }
+      num = exponent.num
+    } else {
+      num = exponent
+    } 
+
+    const number = num % (this.prime - 1)
+
+    if(number < 0){
+      n = powExp(this.num, number + this.prime - 1, this.prime)
+    } else {
+      n = powExp(this.num, number, this.prime)
+    }
+
+    return new FieldElement(n, this.prime)
+  }
+
+  div = (divider: number | FieldElement): FieldElement => {
+    let num: number 
+
+    if(divider instanceof FieldElement){
+      if(this.prime != divider.prime){
+        throw new Error('Cannot add two number in different Fields')
+      }
+      num = divider.num
+    } else {
+      num = divider
+    } 
+
+    const number = this.num * powExp(num, this.prime - 2, this.prime) % this.prime
 
     return new FieldElement(number, this.prime)
   }

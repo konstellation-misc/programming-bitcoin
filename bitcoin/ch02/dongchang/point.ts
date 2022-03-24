@@ -1,19 +1,23 @@
+import {FieldElement} from '../../ch01/dongchang/field'
 export class Point {
-  x: number
-  y: number
+  x: FieldElement
+  y: FieldElement
   a: number
   b: number
+  inf: FieldElement
 
-  constructor(x: number, y: number, a: number, b: number){
+  constructor(x: FieldElement, y: FieldElement, a: number, b: number){
     this.x = x
     this.y = y
     this.a = a
     this.b = b
-    if(this.x === Infinity && this.y === Infinity){
+    this.inf = new FieldElement(Infinity, x.prime)
+
+    if(this.x.num === Infinity && this.y.num === Infinity){
       return
     }
 
-    if (this.y**2 !== this.x**3 + a*x + b){
+    if (y.exp(2) !== x.exp(3).add(x.mul(new FieldElement(a, x.prime))).add(new FieldElement(b, x.prime))){
       throw new Error(`(${x}, ${y}) is not on the curve`)
     }
   }
@@ -31,32 +35,32 @@ export class Point {
       throw new Error(`${this}, ${other} are not on the same curve`)
     }
 
-    if(this.x === Infinity){
+    if(this.x.num === Infinity){
       return other
     }
 
-    if(other.x === Infinity){
+    if(other.x.num === Infinity){
       return this
     }
 
     if(this.x === other.x){
       if(this.y === other.y){
-        if(this.y === 0){
-          return new Point(Infinity, Infinity, this.a, this.b)
+        if(this.y.num === 0){
+          return new Point(this.inf, this.inf, this.a, this.b)
         } else {
-          const s = (3 * (this.x**2) + this.a) / (2 * this.y)
-          const newX = s**2 - (2 * this.x)
-          const newY = s*(this.x - newX) - this.y
+          const s = this.x.exp(2).mul(3).add(this.a).div(this.y.mul(2))
+          const newX = s.exp(2).sub(this.x.mul(2))
+          const newY = s.mul(this.x.sub(newX)).sub(this.y)
 
           return new Point(newX, newY, this.a, this.b)
         }
       } else {
-        return new Point(Infinity, Infinity, this.a, this.b)
+        return new Point(this.inf, this.inf, this.a, this.b)
       }
     } else {
-      const s = (other.y - this.y) / (other.x - this.x)
-      const newX = s**2 - this.x - other.x
-      const newY = s * (this.x - newX) - this.y
+      const s = other.y.sub(this.y).div(other.x.sub(this.x))
+      const newX = s.exp(2).sub(this.x).sub(other.x)
+      const newY = s.mul(this.x .sub(newX)).sub(this.y)
 
       return new Point(newX, newY, this.a, this.b)
     }
