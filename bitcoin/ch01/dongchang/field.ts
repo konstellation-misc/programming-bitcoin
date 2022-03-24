@@ -56,7 +56,7 @@ export class FieldElement {
 
   add = (other: FieldElement): FieldElement => {
     if(this.prime != other.prime){
-      throw Error('Cannot add two number in different Fields')
+      throw new Error('Cannot add two number in different Fields')
     }
 
     const number = (this.num + other.num) % this.prime
@@ -66,7 +66,7 @@ export class FieldElement {
 
   sub = (other: FieldElement): FieldElement => {
     if(this.prime != other.prime){
-      throw Error('Cannot add two number in different Fields')
+      throw new Error('Cannot add two number in different Fields')
     }
 
     const beforeNegation = (this.num - other.num) % this.prime
@@ -77,7 +77,7 @@ export class FieldElement {
 
   mul = (multiplier: FieldElement): FieldElement => {
     if(this.prime != multiplier.prime) {
-      throw Error('Cannot add two number in different Fields')
+      throw new Error('Cannot add two number in different Fields')
     }
 
     const number = this.num * multiplier.num % this.prime
