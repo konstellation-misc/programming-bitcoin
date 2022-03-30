@@ -6,17 +6,18 @@ import shutil
 PARTICIPANTS = ["kairat", "mj", "doohoon", "hyun", "hyunjin", "dongchang", "beoms"]
 
 
-def touch(cur, participants):
-    for top in ('bitcoin', 'cookbook'):
-        dname = f'{top}/'
-        for p in participants:
-            path = f'{dname}/{p}'
-            os.makedirs(path, exist_ok=True)
-            Path(f'{path}/i_didnt_study_chapter_{cur}').touch()
+def touch(cur, top, participants):
+    assert top in ('bitcoin', 'cookbook')
+    dname = f'{top}/'
+    for p in participants:
+        path = f'{dname}/{p}'
+        os.makedirs(path, exist_ok=True)
+        Path(f'{path}/i_didnt_study_chapter_{cur}').touch()
 
 
 if __name__ == '__main__':
-    touch('7_second', PARTICIPANTS)
+    touch('4', 'bitcoin', PARTICIPANTS)
+    touch('8', 'cookbook', PARTICIPANTS)
 
 
 def get_all_files(dname):
