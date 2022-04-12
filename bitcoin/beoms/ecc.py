@@ -367,7 +367,7 @@ N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 
 
 class S256Field(FieldElement):
-    def __init__(self, num, prime=None):
+    def __init__(self, num):
         super().__init__(num=num, prime=P)
 
     def __repr__(self):
@@ -382,12 +382,12 @@ class S256Field(FieldElement):
 
 
 class S256Point(Point):
-    def __init__(self, x, y, a=None, b=None):
-        a, b = S256Field(A), S256Field(B)
+    def __init__(self, x: int, y: int, a=S256Field(A), b=S256Field(B)):
         if type(x) == int:
-            super().__init__(x=S256Field(x), y=S256Field(y), a=a, b=b)
-        else:
-            super().__init__(x=x, y=y, a=a, b=b)
+            x = S256Field(x)
+        if type(y) == int:
+            y = S256Field(y)
+        super().__init__(x=x, y=y, a=a, b=b)
 
     def __rmul__(self, coefficient):
         coef = coefficient % N
@@ -406,9 +406,10 @@ class S256Point(Point):
 
     def sec(self, compressed=True):
         """returns the binary version of the SEC format"""
-        # if compressed, starts with b'\x02' if self.y.num is even, b'\x03' if self.y is odd
-        # then self.x.num
-        # remember, you have to convert self.x.num/self.y.num to binary (some_integer.to_bytes(32, 'big'))
+        # if compressed, starts with b'\x02' if self.y.num is even, b'\x03'
+        # if self.y is odd then self.x.num
+        # remember, you have to convert self.x.num/self.y.num to binary
+        # (some_integer.to_bytes(32, 'big'))
         if compressed:
             if self.y.num % 2 == 0:
                 return b"\x02" + self.x.num.to_bytes(32, "big")
@@ -435,7 +436,7 @@ class S256Point(Point):
         return encode_base58_checksum(prefix + h160)
 
     @classmethod
-    def parse(self, sec_bin):
+    def parse(self, sec_bin: bytes):
         """returns a Point object from a SEC binary (not hex)"""
         if sec_bin[0] == 4:
             x = int.from_bytes(sec_bin[1:33], "big")
@@ -519,7 +520,10 @@ class S256Test(TestCase):
 
     def test_sec(self):
         coefficient = 999**3
-        uncompressed = "049d5ca49670cbe4c3bfa84c96a8c87df086c6ea6a24ba6b809c9de234496808d56fa15cc7f3d38cda98dee2419f415b7513dde1301f8643cd9245aea7f3f911f9"
+        uncompressed = (
+            "049d5ca49670cbe4c3bfa84c96a8c87df086c6ea6a24ba6b809c9de234496808d56fa15cc7"
+            "f3d38cda98dee2419f415b7513dde1301f8643cd9245aea7f3f911f9"
+        )
         compressed = (
             "039d5ca49670cbe4c3bfa84c96a8c87df086c6ea6a24ba6b809c9de234496808d5"
         )
@@ -527,7 +531,10 @@ class S256Test(TestCase):
         self.assertEqual(point.sec(compressed=False), bytes.fromhex(uncompressed))
         self.assertEqual(point.sec(compressed=True), bytes.fromhex(compressed))
         coefficient = 123
-        uncompressed = "04a598a8030da6d86c6bc7f2f5144ea549d28211ea58faa70ebf4c1e665c1fe9b5204b5d6f84822c307e4b4a7140737aec23fc63b65b35f86a10026dbd2d864e6b"
+        uncompressed = (
+            "04a598a8030da6d86c6bc7f2f5144ea549d28211ea58faa70ebf4c1e665c1fe9b5204b5d6f"
+            "84822c307e4b4a7140737aec23fc63b65b35f86a10026dbd2d864e6b"
+        )
         compressed = (
             "03a598a8030da6d86c6bc7f2f5144ea549d28211ea58faa70ebf4c1e665c1fe9b5"
         )
@@ -535,7 +542,10 @@ class S256Test(TestCase):
         self.assertEqual(point.sec(compressed=False), bytes.fromhex(uncompressed))
         self.assertEqual(point.sec(compressed=True), bytes.fromhex(compressed))
         coefficient = 42424242
-        uncompressed = "04aee2e7d843f7430097859e2bc603abcc3274ff8169c1a469fee0f20614066f8e21ec53f40efac47ac1c5211b2123527e0e9b57ede790c4da1e72c91fb7da54a3"
+        uncompressed = (
+            "04aee2e7d843f7430097859e2bc603abcc3274ff8169c1a469fee0f20614066f8e21ec53f4"
+            "0efac47ac1c5211b2123527e0e9b57ede790c4da1e72c91fb7da54a3"
+        )
         compressed = (
             "03aee2e7d843f7430097859e2bc603abcc3274ff8169c1a469fee0f20614066f8e"
         )

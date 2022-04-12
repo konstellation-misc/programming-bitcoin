@@ -6,7 +6,7 @@ import hashlib
 SIGHASH_ALL = 1
 SIGHASH_NONE = 2
 SIGHASH_SINGLE = 3
-BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 
 
 def run(test):
@@ -16,12 +16,12 @@ def run(test):
 
 
 def hash160(s):
-    '''sha256 followed by ripemd160'''
-    return hashlib.new('ripemd160', hashlib.sha256(s).digest()).digest()
+    """sha256 followed by ripemd160"""
+    return hashlib.new("ripemd160", hashlib.sha256(s).digest()).digest()
 
 
 def hash256(s):
-    '''two rounds of sha256'''
+    """two rounds of sha256"""
     return hashlib.sha256(hashlib.sha256(s).digest()).digest()
 
 
@@ -34,9 +34,9 @@ def encode_base58(s):
         else:
             break
     # convert to big endian integer
-    num = int.from_bytes(s, 'big')
-    prefix = '1' * count
-    result = ''
+    num = int.from_bytes(s, "big")
+    prefix = "1" * count
+    result = ""
     while num > 0:
         num, mod = divmod(num, 58)
         result = BASE58_ALPHABET[mod] + result
@@ -52,35 +52,37 @@ def decode_base58(s):
     for c in s:
         num *= 58
         num += BASE58_ALPHABET.index(c)
-    combined = num.to_bytes(25, byteorder='big')
+    combined = num.to_bytes(25, byteorder="big")
     checksum = combined[-4:]
     if hash256(combined[:-4])[:4] != checksum:
-        raise ValueError('bad address: {} {}'.format(checksum, hash256(combined[:-4])[:4]))
+        raise ValueError(
+            "bad address: {} {}".format(checksum, hash256(combined[:-4])[:4])
+        )
     return combined[1:-4]
 
 
 def little_endian_to_int(b):
-    '''little_endian_to_int takes byte sequence as a little-endian number.
-    Returns an integer'''
-    return int.from_bytes(b, 'little')
+    """little_endian_to_int takes byte sequence as a little-endian number.
+    Returns an integer"""
+    return int.from_bytes(b, "little")
 
 
 def int_to_little_endian(n, length):
-    '''endian_to_little_endian takes an integer and returns the little-endian
-    byte sequence of length'''
-    return n.to_bytes(length, 'little')
+    """endian_to_little_endian takes an integer and returns the little-endian
+    byte sequence of length"""
+    return n.to_bytes(length, "little")
 
 
 def read_varint(s):
-    '''read_varint reads a variable integer from a stream'''
+    """read_varint reads a variable integer from a stream"""
     i = s.read(1)[0]
-    if i == 0xfd:
+    if i == 0xFD:
         # 0xfd means the next two bytes are the number
         return little_endian_to_int(s.read(2))
-    elif i == 0xfe:
+    elif i == 0xFE:
         # 0xfe means the next four bytes are the number
         return little_endian_to_int(s.read(4))
-    elif i == 0xff:
+    elif i == 0xFF:
         # 0xff means the next eight bytes are the number
         return little_endian_to_int(s.read(8))
     else:
@@ -89,33 +91,38 @@ def read_varint(s):
 
 
 def encode_varint(i):
-    '''encodes an integer as a varint'''
-    if i < 0xfd:
+    """encodes an integer as a varint"""
+    if i < 0xFD:
         return bytes([i])
     elif i < 0x10000:
-        return b'\xfd' + int_to_little_endian(i, 2)
+        return b"\xfd" + int_to_little_endian(i, 2)
     elif i < 0x100000000:
-        return b'\xfe' + int_to_little_endian(i, 4)
+        return b"\xfe" + int_to_little_endian(i, 4)
     elif i < 0x10000000000000000:
-        return b'\xff' + int_to_little_endian(i, 8)
+        return b"\xff" + int_to_little_endian(i, 8)
     else:
-        raise ValueError('integer too large: {}'.format(i))
+        raise ValueError("integer too large: {}".format(i))
 
 
 class HelperTest(TestCase):
-
     def test_little_endian_to_int(self):
-        h = bytes.fromhex('99c3980000000000')
+        h = bytes.fromhex("99c3980000000000")
         want = 10011545
         self.assertEqual(little_endian_to_int(h), want)
-        h = bytes.fromhex('a135ef0100000000')
+        h = bytes.fromhex("a135ef0100000000")
         want = 32454049
         self.assertEqual(little_endian_to_int(h), want)
 
     def test_int_to_little_endian(self):
         n = 1
-        want = b'\x01\x00\x00\x00'
+        want = b"\x01\x00\x00\x00"
         self.assertEqual(int_to_little_endian(n, 4), want)
         n = 10011545
-        want = b'\x99\xc3\x98\x00\x00\x00\x00\x00'
+        want = b"\x99\xc3\x98\x00\x00\x00\x00\x00"
         self.assertEqual(int_to_little_endian(n, 8), want)
+
+
+def divide_str(in_str, tab_level):
+    width = 88 - tab_level * 4
+    for i in range((len(in_str)-1)//width + 1):
+        print(repr(in_str[74*i:74*(i+1)]))
