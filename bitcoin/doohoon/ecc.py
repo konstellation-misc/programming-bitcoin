@@ -178,6 +178,33 @@ class S256Field(FieldElement):
     def __repr__(self):
         return "{:x}".format(self.num).zfill(64)
 
+    def sqrt(self):
+        return self ** ((P + 1) // 4)
+
+    @classmethod
+    def parse(self, sec_bin):
+        if sec_bin[0] == 4:
+            x = int.from_bytes(sec_bin[1:33], "big")
+            y = int.from_bytes(sec_bin[33:65], "big")
+            return S256Point(x=x, y=y)
+
+        is_even: bool = sec_bin[0] == 2
+        x = S256Field(int.from_bytes(sec_bin[1:]), "big")
+        alpha = x ** 3 + S256Field(B)
+        beta = alpha.sqrt()
+
+        if beta.num % 2 == 0:
+            even_beta = beta
+            odd_beta = S256Field(P - beta.num)
+        else:
+            even_beta = S256Field(P - beta.num)
+            odd_beta = beta
+
+        if is_even:
+            return S256Point(x, even_beta)
+        else:
+            return S256Point(x, odd_beta)
+
 
 A = 0
 B = 7
@@ -204,8 +231,28 @@ class S256Point(Point):
         total = u * G + v * self
         return total.x.num == sig.r
 
-    def sec(self):
-        return b"\x04" + self.x.num.to_bytes(32, "big") + self.y.num.to_bytes(32, "big")
+    def sec(self, compressed=True):
+        if compressed:
+            if self.y.num % 2 == 0:
+                return b'\x02' + self.x.num.to_bytes(32, "big")
+            else:
+                return b'\x03' + self.x.num.to_bytes(32, "big")
+
+        return b'\x04' + self.x.num.to_bytes(32, "big") + self.y.num.to_bytes(32, "big")
+
+
+    def hash160(self, compressed=True):
+        return hash160(self.sec(compressed))
+
+    def address(self, compressed=True, testnet=False):
+        h160 = self.hash160(compressed)
+
+        if testnet:
+            prefix = b'\x6f'
+        else:
+            prefix = b'\x00'
+        
+        return encode_base58_checksum(prefix + h160)
 
 
 G = S256Point(
@@ -221,6 +268,25 @@ class Signiture:
 
     def __repr__(self):
         return f"Signiture({self.r},{self.s})"
+
+    def der(self):
+        rbin = self.r.to_bytes(32, "big")
+        rbin = rbin.lstrip(b'\x00')
+
+        if rbin[0] & 0x80:
+            rbin = b'\x00' + rbin
+        
+        result = bytes([2, len(rbin)]) + rbin
+        
+        sbin = self.s.to_bytes(32, "big")
+        sbin = sbin.lstrip(b'\x00')
+
+        if sbin[0] & 0x80:
+            sbin = b'\x00' + sbin
+
+        result += bytes([2, len(sbin)]) + sbin
+
+        return bytes([0x30, len(result)]) + result
 
 
 class PrivateKey:
@@ -238,7 +304,7 @@ class PrivateKey:
         s = (z + r * self.secret) * k_inv % N
         if s > N / 2:
             s = N - s
-        return Signature(r, s)
+        return Signiture(r, s)
 
     # https://tools.ietf.org/html/rfc6979
     def deterministic_k(self, z):
@@ -262,3 +328,51 @@ class PrivateKey:
                 return candidate
             k = hmac.new(k, v + b"\x00", s256).digest()
             v = hmac.new(k, v, s256).digest()
+
+    def wif(self, compressed=True, testnet=False):
+        secret_bytes = self.secret.to_bytes(32, "big")
+
+        if testnet:
+            prefix = b'\xef'
+        else:
+            prefix = b'\x80'
+
+        if compressed:
+            suffix = b'\x01'
+        else:
+            suffix = b''
+
+        return encode_base58_checksum(prefix + secret_bytes + suffix)
+
+
+BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+
+
+def encode_base58(s):
+    count = 0
+
+    for c in s:
+        if c == 0:
+            count += 1
+        else:
+            break
+    
+    num = int.from_bytes(s, "big")
+    prefix = '1' * count
+    result = ''
+
+    while num > 0:
+        num, mod = divmod(num, 58)
+        result = BASE58_ALPHABET[mod]
+
+    return prefix + result
+
+
+def encode_base58_checksum(b):
+    return encode_base58(b + hash256(b)[:4])
+
+
+def hash160(s):
+    return hashlib.new('ripemd160', hashlib.sha256(s).digest()).digest()
+
+
