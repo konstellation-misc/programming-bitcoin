@@ -4,6 +4,8 @@ from typing import Union, Optional
 from random import randint
 import hashlib
 
+from helper import hash256
+
 
 class FieldElement:
     def __init__(self, num: int, prime: int) -> None:
@@ -356,3 +358,39 @@ class PrivateKey:
             suffix = b''
 
         return encode_base58_checksum(prefix + secret_bytes + suffix)
+
+class Tx:
+    
+    def __init__(self,version, tx_ins, tx_outs, locktimes, testnet: bool=False):
+        self.version = version
+        self.tx_ins = tx_ins
+        self.tx_outs = tx_outs
+        self.locktimes = locktimes
+        self.testnet = testnet
+
+    
+    def __repr__(self):
+        tx_ins = ''
+
+        for tx_in in self.tx_ins:
+            tx_ins += tx_in.__repr__() + '\n'
+
+        tx_outs = ''
+        
+        for tx_out in self.tx_outs:
+            tx_outs += tx_out.__repr__() + '\n'
+
+        return f"tx: {self.id()}\nversion: {self.version()}\ntx_ins: \
+            \n{self.tx_ins}tx_outs: \n{self.tx_outs}locktime: {self.locktimes}"
+
+
+    def id(self):
+        return self.hash().hex()
+
+
+    def hash(self):
+        return hash256(self.serialize())[::-1]
+
+    @classmethod
+    def parse(cls, serialization):
+        version = serialization[0:4]    
