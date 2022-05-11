@@ -4,6 +4,8 @@ from typing import Union, Optional
 from random import randint
 import hashlib
 
+from helper import hash256
+
 
 class FieldElement:
     def __init__(self, num: int, prime: int) -> None:
@@ -31,7 +33,7 @@ class FieldElement:
         # a(FieldElement) != b(FieldElement)
         return self.num != other.num and self.prime != other.prime
 
-    def _arith_op(self, op, other: Optional[any]) -> int:
+    def _arith_op(self, op:str, other: Optional[any]) -> int:
         if self.prime != other.prime:
             raise TypeError(f"Cannot {op} two numbers in different Fields")
 
@@ -87,8 +89,14 @@ class FieldElement:
         # ((a) ^_f(b)) % p
         # 페르마의 소정리에 해당 됨
         # num = (self.num ** exponent) % self.prime
-        num = pow(self.num, exponent % self.prime - 1, self.prime)
+        print(f"{self.prime} {type(self.prime)}")
+        num = pow(self.num, exponent % (self.prime - 1), self.prime)
         return self.__class__(num, self.prime)
+
+    def __rmul__(self, coefficient: int) -> Optional[any]:
+        num = (self.num * coefficient) % self.prime
+        return self.__class__(num, self.prime)
+
 
 
 class Point:
@@ -140,16 +148,18 @@ class Point:
             x = pow(s, 2) - self.x - other.x
             y = s * (self.x - x) - self.y
             return self.__class__(x, y, self.a, self.b)
-        elif self.x == other.x:
+
+        # 두 점이 같고, y좌표가 같으면 무한 원점을 갖는다.
+        print(f"{self.y} {self.x} {type(self.y)} {type(self.x)}")
+        if self == other and self.y == 0 * self.x:
+            return self.__class__(None, None, self.a, self.b)
+
+        if self == other:
             # s = (other.y - self.y) / (other.x - self.x)
-            s = (3 * pow(self.x, 2) + a) / (2 * self.y)
+            s = (3 * pow(self.x, 2) + self.a) / (2 * self.y)
             x = pow(s, 2) - 2 * self.x
             y = s * (self.x - x) - self.y
             return self.__class__(x, y, self.a, self.b)
-
-        # 두 점이 같고, y좌표가 같으면 무한 원점을 갖는다.
-        if self == other and self.y == 0 * self.x:
-            return self.__class__(None, None, self.a, self.b)
 
     def __rmul__(self, coefficient: int) -> int:
         # 아.. 이런건 쓰지 마세요..
@@ -181,6 +191,60 @@ class S256Field(FieldElement):
     def sqrt(self):
         return self ** ((P + 1) // 4)
 
+
+A = 0
+B = 7
+
+N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+
+
+class S256Point(Point):
+    def __init__(self, x: int, y: int, a: int = None, b: int = None) -> None:
+        a, b = S256Field(A), S256Field(B)
+        if type(x) == int:
+            super().__init__(x=S256Field(x), y=S256Field(y), a=a, b=b)
+        else:
+            super().__init__(x=x, y=y, a=a, b=b)
+
+    def __repr__(self):
+        if self.x is None:
+            return "S256Point(infinity)"
+        else:
+            return f"S256Point({self.x}, {self.y})"
+
+    def __rmul__(self, coefficient: int):
+        coef = coefficient % N
+        return super().__rmul__(coef)
+
+    def verify(self, z: int, sig: int):
+        s_inv = pow(sig, N - 2, N - 2)
+        u = z * s_inv % N
+        v = sig.r * s_inv % N
+        total = u * G + v * self
+        return total.x.num == sig.r
+
+    def sec(self, compressed=True):
+        if compressed:
+            if self.y.num % 2 == 0:
+                return b'\x02' + self.x.num.to_bytes(32, "big")
+            else:
+                return b'\x03' + self.x.num.to_bytes(32, "big")
+
+        return b'\x04' + self.x.num.to_bytes(32, "big") + self.y.num.to_bytes(32, "big")
+
+    def hash160(self, compressed=True):
+        return hash160(self.sec(compressed))
+
+    def address(self, compressed=True, testnet=False):
+        h160 = self.hash160(compressed)
+
+        if testnet:
+            prefix = b'\x6f'
+        else:
+            prefix = b'\x00'
+        
+        return encode_base58_checksum(prefix + h160)
+
     @classmethod
     def parse(self, sec_bin):
         if sec_bin[0] == 4:
@@ -204,55 +268,6 @@ class S256Field(FieldElement):
             return S256Point(x, even_beta)
         else:
             return S256Point(x, odd_beta)
-
-
-A = 0
-B = 7
-
-N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
-
-
-class S256Point(Point):
-    def __init__(self, x: int, y: int, a: int = None, b: int = None) -> None:
-        a, b = S256Field(A), S256Field(B)
-        if type(x) == int:
-            super().__init__(x=S256Field(x), y=S256Field(y), a=a, b=b)
-        else:
-            super().__init__(x=x, y=y, a=a, b=b)
-
-    def __rmul__(self, coefficient: int):
-        coef = coefficient % N
-        return super().__rmul__(coef)
-
-    def verify(self, z: int, sig: int):
-        s_inv = pow(sig, N - 2, N - 2)
-        u = z * s_inv % N
-        v = sig.r * s_inv % N
-        total = u * G + v * self
-        return total.x.num == sig.r
-
-    def sec(self, compressed=True):
-        if compressed:
-            if self.y.num % 2 == 0:
-                return b'\x02' + self.x.num.to_bytes(32, "big")
-            else:
-                return b'\x03' + self.x.num.to_bytes(32, "big")
-
-        return b'\x04' + self.x.num.to_bytes(32, "big") + self.y.num.to_bytes(32, "big")
-
-
-    def hash160(self, compressed=True):
-        return hash160(self.sec(compressed))
-
-    def address(self, compressed=True, testnet=False):
-        h160 = self.hash160(compressed)
-
-        if testnet:
-            prefix = b'\x6f'
-        else:
-            prefix = b'\x00'
-        
-        return encode_base58_checksum(prefix + h160)
 
 
 G = S256Point(
@@ -344,35 +359,38 @@ class PrivateKey:
 
         return encode_base58_checksum(prefix + secret_bytes + suffix)
 
-
-BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
-
-
-def encode_base58(s):
-    count = 0
-
-    for c in s:
-        if c == 0:
-            count += 1
-        else:
-            break
+class Tx:
     
-    num = int.from_bytes(s, "big")
-    prefix = '1' * count
-    result = ''
+    def __init__(self,version, tx_ins, tx_outs, locktimes, testnet: bool=False):
+        self.version = version
+        self.tx_ins = tx_ins
+        self.tx_outs = tx_outs
+        self.locktimes = locktimes
+        self.testnet = testnet
 
-    while num > 0:
-        num, mod = divmod(num, 58)
-        result = BASE58_ALPHABET[mod]
+    
+    def __repr__(self):
+        tx_ins = ''
 
-    return prefix + result
+        for tx_in in self.tx_ins:
+            tx_ins += tx_in.__repr__() + '\n'
+
+        tx_outs = ''
+        
+        for tx_out in self.tx_outs:
+            tx_outs += tx_out.__repr__() + '\n'
+
+        return f"tx: {self.id()}\nversion: {self.version()}\ntx_ins: \
+            \n{self.tx_ins}tx_outs: \n{self.tx_outs}locktime: {self.locktimes}"
 
 
-def encode_base58_checksum(b):
-    return encode_base58(b + hash256(b)[:4])
+    def id(self):
+        return self.hash().hex()
 
 
-def hash160(s):
-    return hashlib.new('ripemd160', hashlib.sha256(s).digest()).digest()
+    def hash(self):
+        return hash256(self.serialize())[::-1]
 
-
+    @classmethod
+    def parse(cls, serialization):
+        version = serialization[0:4]    
