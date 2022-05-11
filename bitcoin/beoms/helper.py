@@ -126,3 +126,10 @@ def divide_str(in_str, tab_level):
     width = 88 - tab_level * 4
     for i in range((len(in_str)-1)//width + 1):
         print(repr(in_str[74*i:74*(i+1)]))
+
+
+def convert_to_str_and_trim(in_int):
+    if len(str(in_int)) < 10:
+        return str(in_int)
+
+    return str(in_int)[:6] + '...'

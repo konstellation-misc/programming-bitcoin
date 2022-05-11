@@ -5,7 +5,7 @@ from unittest import TestCase
 import hashlib
 import hmac
 
-from helper import encode_base58_checksum, hash160
+from helper import encode_base58_checksum, hash160, convert_to_str_and_trim
 
 
 class FieldElement:
@@ -167,11 +167,20 @@ class Point:
         cls_name = self.__class__.__name__
         if self.x is None:
             return f"<{cls_name}, infinity>"
+
         elif isinstance(self.x, FieldElement):
-            return (
-                f"<{cls_name} ({self.x.num}, {self.y.num}), a {self.a.num},"
-                f" b { self.b.num}, prime {self.x.prime}>"
+            nums = [self.x.num, self.y.num, self.a.num, self.b.num, self.x.prime]
+            x, y, a, b, prime = (
+                convert_to_str_and_trim(num)
+                for num in (
+                    self.x.num,
+                    self.y.num,
+                    self.a.num,
+                    self.b.num,
+                    self.x.prime,
+                )
             )
+            return f"<{cls_name} ({x!s}, {y!s}), {a=!s}, {b=!s}, {prime=!s}>"
         else:
             return f"<{cls_name} ({self.x}, {self.y}), a={self.a}, b={self.b}>"
 
@@ -367,7 +376,8 @@ N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 
 
 class S256Field(FieldElement):
-    def __init__(self, num):
+    def __init__(self, num, prime=P):
+        assert prime == P
         super().__init__(num=num, prime=P)
 
     def __repr__(self):
